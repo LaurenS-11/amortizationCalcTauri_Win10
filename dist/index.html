@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amortization Calculator</title>
+  <script type="module" crossorigin src="/assets/index-BXiuC133.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-DKvryxzX.css">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>🏠 Amortization Calculator</h1>
+            <p>Modern desktop calculator built with Tauri & Rust</p>
+        </header>
+
+        <main class="container">
+            <!-- Input Form -->
+            <section class="input-section">
+                <h2>Loan Details</h2>
+                <div class="form-grid">                    <div class="input-group">
+                        <label for="principal">Principal Amount ($)</label>
+                        <input type="number" id="principal" value="250000" placeholder="250000" min="0" step="0.01">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="rate">Annual Interest Rate (%)</label>
+                        <input type="number" id="rate" value="6.5" placeholder="6.5" min="0" max="100" step="0.01">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="term">Loan Term</label>
+                        <div class="term-input">
+                            <input type="number" id="term" value="30" placeholder="30" min="1" step="1">
+                            <select id="termType">
+                                <option value="years" selected>Years</option>
+                                <option value="months">Months</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button id="calculateBtn" class="primary-btn">Calculate</button>
+                        <button id="clearBtn" class="secondary-btn">Clear</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Results Summary -->
+            <section class="results-section" id="resultsSection" style="display: none;">
+                <h2>Payment Summary</h2>
+                <div class="results-grid">
+                    <div class="result-card">
+                        <h3>Monthly Payment</h3>
+                        <span id="monthlyPayment" class="amount">$0.00</span>
+                    </div>
+                    <div class="result-card">
+                        <h3>Total Interest</h3>
+                        <span id="totalInterest" class="amount">$0.00</span>
+                    </div>
+                    <div class="result-card">
+                        <h3>Total Paid</h3>
+                        <span id="totalPaid" class="amount">$0.00</span>
+                    </div>
+                    <div class="result-card">
+                        <h3>Payoff Time</h3>
+                        <span id="payoffTime" class="amount">0 months</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Interactive Chart -->
+            <section class="chart-section" id="chartSection" style="display: none;">
+                <h2>Amortization Schedule</h2>
+                <div class="chart-container">
+                    <canvas id="amortizationChart"></canvas>
+                </div>
+            </section>
+
+            <!-- Payment Table -->
+            <section class="table-section" id="tableSection" style="display: none;">
+                <h2>Payment Schedule</h2>
+                <div class="table-controls">
+                    <button id="exportBtn" class="secondary-btn">Export CSV</button>
+                    <div class="table-info">
+                        <span id="tableInfo">Showing all payments</span>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="paymentTable">
+                        <thead>
+                            <tr>
+                                <th>Payment #</th>
+                                <th>Payment Amount</th>
+                                <th>Principal</th>
+                                <th>Interest</th>
+                                <th>Remaining Balance</th>
+                                <th>Extra Payment</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+
+        <!-- Loading Spinner -->
+        <div id="loadingSpinner" class="spinner" style="display: none;">
+            <div class="spinner-circle"></div>
+            <span>Calculating...</span>
+        </div>
+    </div>
+
+</body>
+</html>

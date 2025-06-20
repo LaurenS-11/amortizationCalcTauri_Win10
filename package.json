@@ -1,0 +1,31 @@
+{
+  "name": "amortization-calc-tauri",
+  "version": "1.0.0",
+  "description": "Modern Tauri-based amortization calculator with interactive charts",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
+  },
+  "keywords": [
+    "tauri",
+    "desktop",
+    "amortization",
+    "calculator",
+    "finance"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "@tauri-apps/cli": "^1.5.0",
+    "vite": "^6.3.5"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^1.5.0",
+    "chart.js": "^4.4.0"
+  }
+}
