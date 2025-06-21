@@ -18,7 +18,8 @@ jobs:
       matrix:
         platform: [macos-latest, ubuntu-latest, windows-latest]
 
-    runs-on: ${{ matrix.platform }}    steps:
+    runs-on: ${{ matrix.platform }}
+    steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
