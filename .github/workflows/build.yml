@@ -18,10 +18,11 @@ jobs:
       matrix:
         platform: [macos-latest, ubuntu-latest, windows-latest]
 
-    runs-on: ${{ matrix.platform }}
-    steps:
+    runs-on: ${{ matrix.platform }}    steps:
       - name: Checkout repository
-        uses: actions/checkout@v4      - name: Install dependencies (ubuntu only)
+        uses: actions/checkout@v4
+
+      - name: Install dependencies (ubuntu only)
         if: matrix.platform == 'ubuntu-latest'
         run: |
           sudo apt-get update
@@ -57,7 +58,9 @@ jobs:
           echo "NPM version: $(npm --version)"
           echo "Rust version: $(rustc --version)"
           echo "Cargo version: $(cargo --version)"
-          echo "Platform: ${{ matrix.platform }}"      - name: Build the app
+          echo "Platform: ${{ matrix.platform }}"
+
+      - name: Build the app
         run: |
           npm run tauri build
         env:
