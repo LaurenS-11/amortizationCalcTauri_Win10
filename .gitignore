@@ -10,6 +10,10 @@ build/
 
 # Tauri build artifacts
 src-tauri/target/
+# Allow release executables and installers
+!src-tauri/target/release/*.exe
+!src-tauri/target/release/bundle/msi/*.msi
+!src-tauri/target/release/bundle/nsis/*.exe
 src-tauri/Cargo.lock
 
 # OS generated files
