@@ -316,86 +316,184 @@ npm run tauri:build
    - **macOS**: Apple Developer Program signing
    - **Linux**: GPG signing
 
-#### File Watching and Hot Reload
+## 🔄 CI/CD & Multi-Platform Builds
 
-**Frontend hot reload**:
+This project features a robust **GitHub Actions** workflow that automatically builds the application for **Windows**, **Linux**, and **macOS** whenever a new version tag is pushed.
+
+### 🏗️ Automated Build Pipeline
+
+The CI/CD system creates native installers for all major platforms:
+
+| Platform | Artifacts Generated | Runner |
+|----------|-------------------|--------|
+| **Windows** | `.msi` installer, `.exe` executable | `windows-latest` |
+| **Linux** | `.deb` package, `.AppImage` | `ubuntu-22.04` |
+| **macOS** | `.dmg` disk image, `.app` bundle | `macos-latest` |
+
+### 🚀 How It Works
+
+1. **Trigger**: Push a version tag (e.g., `v1.0.0`) to trigger builds
+2. **Parallel Execution**: All three platforms build simultaneously 
+3. **Dependency Management**: Automatic installation of platform-specific requirements
+4. **Artifact Upload**: Built packages are automatically uploaded and available for download
+5. **Caching**: Rust dependencies are cached to speed up subsequent builds
+
+### 🔧 Linux Build Configuration
+
+The Linux build required special attention to dependency management:
+
+```yaml
+runs-on: ubuntu-22.04  # Specific version for package compatibility
 ```
-File Change → Vite detects → Recompiles → Browser reloads → See changes
-     ↓            ↓             ↓           ↓            ↓
-  style.css → CSS rebuild → HMR update → Instant update
-  main.js   → JS rebuild  → HMR update → Instant update
-  index.html → Full reload → Page refresh → Full update
+
+**Required System Dependencies:**
+- `libwebkit2gtk-4.0-dev` - WebKit engine for the UI
+- `libjavascriptcoregtk-4.0-dev` - JavaScript execution engine
+- `libgtk-3-dev` - GTK development libraries
+- `libayatana-appindicator3-dev` - System tray support
+- `librsvg2-dev` - SVG rendering
+- `libdbus-1-dev` - System communication
+- `libudev-dev` - Device management
+- `libsoup2.4-dev` - HTTP client library
+- `pkg-config` - Build configuration
+- Standard build tools (`build-essential`, `curl`, `wget`, `libssl-dev`)
+
+### 🎯 Usage
+
+To trigger a new build:
+
+```bash
+# Create and push a version tag
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
-**Backend changes**:
+### 📦 Download Builds
+
+After successful completion, artifacts are available in the GitHub Actions tab:
+- Go to your repository → Actions → Select the workflow run
+- Scroll down to "Artifacts" section
+- Download platform-specific builds
+
+### 🛠️ Development Notes
+
+This CI/CD setup demonstrates:
+- **Cross-platform compatibility** - Single codebase, multiple native outputs
+- **Dependency resolution** - Handling different package managers and system requirements
+- **Build optimization** - Caching strategies for faster builds
+- **Artifact management** - Organized distribution of build outputs
+
+The workflow configuration showcases advanced GitHub Actions techniques including matrix builds, conditional steps, and artifact handling for desktop application deployment.
+
+### Development (Educational Deep Dive)
+
+#### Understanding the Development Workflow
+
+**Tauri's Unique Architecture**:
+Unlike traditional desktop apps, Tauri uses a **web frontend + native backend** approach:
+
 ```
-Rust Change → Manual restart needed → cargo recompile → App restart
-     ↓              ↓                      ↓              ↓
-  main.rs → Stop tauri dev → Rebuild backend → Start again
+┌─────────────────────┐    ┌───────────────────────┐
+│    Web Frontend     │    │    Rust Backend       │
+│  (HTML/CSS/JS)      │◄──►│   (Native Code)       │
+│                     │    │                       │
+│ • User Interface    │    │ • File System Access │
+│ • User Interactions │    │ • Calculations        │
+│ • Charts & Graphics │    │ • Security Layer      │
+│ • Form Validation   │    │ • System APIs         │
+└─────────────────────┘    └───────────────────────┘
+       WebView                    Native Process
 ```
 
-**Why backend needs restart?**
-- Rust compiles to native machine code
-- Can't hot-swap native code like interpreted JavaScript
-- Must restart the entire process to load new code
+**Communication Bridge**:
+- **Frontend → Backend**: JavaScript calls Rust functions via `invoke()`
+- **Backend → Frontend**: Rust returns data as JSON
+- **Security**: Only explicitly allowed functions can be called
 
-#### Common Development Tasks
+#### Development Commands Explained
 
-**Adding a new calculation function**:
+**Start development server:**
+```bash
+npm run tauri:dev
+```
 
-1. **Add Rust function** in `src-tauri/src/main.rs`:
-   ```rust
-   #[tauri::command]
-   fn calculate_total_interest(principal: f64, rate: f64, years: f64) -> f64 {
-       // Your calculation logic
+**What this command does step-by-step**:
+
+1. **Checks `package.json` scripts**:
+   ```json
+   "scripts": {
+     "tauri:dev": "tauri dev"
    }
    ```
 
-2. **Register command** in main function:
-   ```rust
-   tauri::Builder::default()
-       .invoke_handler(tauri::generate_handler![
-           calculate_amortization,
-           export_to_csv,
-           calculate_total_interest  // Add new function
-       ])
+2. **Tauri reads `src-tauri/tauri.conf.json`**:
+   ```json
+   "build": {
+     "beforeDevCommand": "npm run dev",
+     "devPath": "http://localhost:1420"
+   }
    ```
 
-3. **Call from frontend** in JavaScript:
-   ```javascript
-   import { invoke } from '@tauri-apps/api/tauri';
-   
-   const totalInterest = await invoke('calculate_total_interest', {
-       principal: 250000,
-       rate: 6.5,
-       years: 30
-   });
+3. **Starts Vite dev server** (`npm run dev`):
+   - Compiles JavaScript/CSS in real-time
+   - Serves files on `http://localhost:1420`
+   - Watches for file changes
+   - Enables hot module replacement (HMR)
+
+4. **Compiles Rust backend** (if changed):
+   - Reads `src-tauri/Cargo.toml` for dependencies
+   - Compiles `src-tauri/src/main.rs`
+   - Links all dependencies
+   - Creates executable
+
+5. **Launches desktop window**:
+   - Creates native window using system webview
+   - Loads `http://localhost:1420` in the webview
+   - Establishes IPC (Inter-Process Communication) bridge
+   - Applies security policies from config
+
+**Development Features Active**:
+- ✅ **Hot Reload**: Frontend changes instantly visible
+- ✅ **DevTools**: Right-click → Inspect Element (same as browser)
+- ✅ **Console Logging**: `console.log()` works for debugging
+- ✅ **Network Tab**: Monitor API calls to Rust backend
+- ✅ **Error Overlay**: Build errors shown in the app window
+
+**Build for production:**
+```bash
+npm run tauri:build
+```
+
+**Production build process**:
+
+1. **Frontend optimization** (`npm run build`):
+   ```bash
+   vite build
    ```
+   - **Tree shaking**: Removes unused code
+   - **Minification**: Reduces file sizes
+   - **Code splitting**: Separates vendor and app code
+   - **Asset optimization**: Compresses images, etc.
+   - **Creates `dist/` folder** with optimized files
 
-4. **Test the integration**:
-   - Restart `npm run tauri:dev`
-   - Use browser DevTools to test function calls
-   - Check both frontend and backend logs
+2. **Backend compilation**:
+   ```bash
+   cargo build --release
+   ```
+   - **Release mode**: Maximum optimizations enabled
+   - **No debug symbols**: Smaller binary size
+   - **Aggressive inlining**: Function calls optimized away
+   - **Dead code elimination**: Unused code removed
 
-#### Debugging Techniques
+3. **App bundling**:
+   - **Windows**: Creates `.exe` and `.msi` installer
+   - **macOS**: Creates `.app` bundle and `.dmg` disk image
+   - **Linux**: Creates `.deb` package and `AppImage`
 
-**Frontend debugging**:
-- **Browser DevTools**: Right-click → Inspect Element
-- **Console**: `console.log()`, `console.error()`, `console.table()`
-- **Network tab**: Monitor calls to `invoke()` functions
-- **Sources tab**: Set breakpoints in JavaScript
-
-**Backend debugging**:
-- **Print debugging**: `println!("Debug: {}", value);`
-- **Error handling**: Use `Result<T, String>` return types
-- **Logging**: Use `log` crate for structured logging
-- **Unit tests**: `cargo test` for testing individual functions
-
-**Communication debugging**:
-- **Check function names**: Must match exactly between JS and Rust
-- **Verify data types**: Ensure JSON serialization works
-- **Test parameters**: Use browser console to test `invoke()` calls
-- **Error messages**: Both sides provide helpful error messages
+4. **Code signing** (if configured):
+   - **Windows**: Authenticode signing
+   - **macOS**: Apple Developer Program signing
+   - **Linux**: GPG signing
 
 ## 📖 Usage Guide
 
@@ -622,387 +720,74 @@ csv = "1.3"
 }
 ```
 
-### Communication Flow
+## 🔄 CI/CD & Multi-Platform Builds
 
-**1. User Interaction**:
-```
-User clicks "Calculate" button
-        ↓
-JavaScript event handler triggered
-        ↓
-Form data collected and validated
-        ↓
-invoke() function called with parameters
-```
+This project features a robust **GitHub Actions** workflow that automatically builds the application for **Windows**, **Linux**, and **macOS** whenever a new version tag is pushed.
 
-**2. Frontend → Backend Communication**:
-```javascript
-// Frontend JavaScript
-const result = await invoke('calculate_amortization', {
-    principal: parseFloat(principalInput.value),
-    rate: parseFloat(rateInput.value),
-    years: parseInt(yearsInput.value)
-});
-```
+### 🏗️ Automated Build Pipeline
 
-**3. Backend Processing**:
-```rust
-// Backend Rust
-#[tauri::command]
-fn calculate_amortization(principal: f64, rate: f64, years: f64) -> AmortizationData {
-    let monthly_rate = rate / 100.0 / 12.0;
-    let num_payments = years * 12.0;
-    
-    let monthly_payment = principal * 
-        (monthly_rate * (1.0 + monthly_rate).powf(num_payments)) /
-        ((1.0 + monthly_rate).powf(num_payments) - 1.0);
-    
-    // Build payment schedule...
-    AmortizationData {
-        monthly_payment,
-        total_interest,
-        payment_schedule: payments
-    }
-}
+The CI/CD system creates native installers for all major platforms:
+
+| Platform | Artifacts Generated | Runner |
+|----------|-------------------|--------|
+| **Windows** | `.msi` installer, `.exe` executable | `windows-latest` |
+| **Linux** | `.deb` package, `.AppImage` | `ubuntu-22.04` |
+| **macOS** | `.dmg` disk image, `.app` bundle | `macos-latest` |
+
+### 🚀 How It Works
+
+1. **Trigger**: Push a version tag (e.g., `v1.0.0`) to trigger builds
+2. **Parallel Execution**: All three platforms build simultaneously 
+3. **Dependency Management**: Automatic installation of platform-specific requirements
+4. **Artifact Upload**: Built packages are automatically uploaded and available for download
+5. **Caching**: Rust dependencies are cached to speed up subsequent builds
+
+### 🔧 Linux Build Configuration
+
+The Linux build required special attention to dependency management:
+
+```yaml
+runs-on: ubuntu-22.04  # Specific version for package compatibility
 ```
 
-**4. Backend → Frontend Response**:
-```
-Rust calculation completes
-        ↓
-Data serialized to JSON automatically
-        ↓
-Sent back through IPC bridge
-        ↓
-JavaScript receives Promise resolution
-        ↓
-UI updated with new data
-```
+**Required System Dependencies:**
+- `libwebkit2gtk-4.0-dev` - WebKit engine for the UI
+- `libjavascriptcoregtk-4.0-dev` - JavaScript execution engine
+- `libgtk-3-dev` - GTK development libraries
+- `libayatana-appindicator3-dev` - System tray support
+- `librsvg2-dev` - SVG rendering
+- `libdbus-1-dev` - System communication
+- `libudev-dev` - Device management
+- `libsoup2.4-dev` - HTTP client library
+- `pkg-config` - Build configuration
+- Standard build tools (`build-essential`, `curl`, `wget`, `libssl-dev`)
 
-### Build Process Architecture
+### 🎯 Usage
 
-**Development Build**:
-```
-Source Files → Hot Reload → Development Server → Native Window
-     ↓              ↓             ↓                 ↓
-  Fast builds    Live updates   Debug mode    DevTools enabled
-```
+To trigger a new build:
 
-**Production Build**:
-```
-Source Files → Optimization → Static Assets → Native Bundle
-     ↓              ↓            ↓              ↓
-  All files    Minification   dist/ folder   .exe/.app/.deb
+```bash
+# Create and push a version tag
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
-### Security Architecture
+### 📦 Download Builds
 
-**Principle of Least Privilege**:
-- Only explicitly allowed APIs are accessible
-- Frontend cannot directly access file system
-- All system operations go through Rust backend
-- CSP (Content Security Policy) prevents code injection
+After successful completion, artifacts are available in the GitHub Actions tab:
+- Go to your repository → Actions → Select the workflow run
+- Scroll down to "Artifacts" section
+- Download platform-specific builds
 
-**Allowlist Configuration**:
-```json
-"allowlist": {
-  "all": false,           // Deny everything by default
-  "fs": {
-    "writeFile": true     // Only allow file writing
-  },
-  "shell": {
-    "open": true          // Only allow opening files/URLs
-  }
-}
-```
+### 🛠️ Development Notes
 
-This architecture provides:
-- **Performance**: Native speed for calculations
-- **Security**: Sandboxed frontend, controlled backend access
-- **Maintainability**: Clear separation of concerns
-- **Cross-platform**: Same code runs everywhere
+This CI/CD setup demonstrates:
+- **Cross-platform compatibility** - Single codebase, multiple native outputs
+- **Dependency resolution** - Handling different package managers and system requirements
+- **Build optimization** - Caching strategies for faster builds
+- **Artifact management** - Organized distribution of build outputs
 
-## 🎓 Learning Resources & Next Steps
-
-### Understanding the Technologies
-
-#### Why We Chose Each Technology
-
-**Tauri over Electron**:
-- **Size**: 15MB vs 150MB+ (10x smaller)
-- **Memory**: 50MB vs 200MB+ (4x less RAM)
-- **Security**: Rust memory safety vs JavaScript vulnerabilities
-- **Performance**: Native compilation vs interpreted runtime
-- **System Integration**: Direct OS API access vs abstraction layers
-
-**Rust for Backend**:
-- **Memory Safety**: No segfaults, buffer overflows, or memory leaks
-- **Performance**: Zero-cost abstractions, compile-time optimizations
-- **Reliability**: Strong type system catches bugs at compile time
-- **Concurrency**: Fearless concurrency without data races
-- **Cross-platform**: Same code works on Windows, macOS, Linux
-
-**Modern Web Stack for Frontend**:
-- **Familiar**: Most developers know HTML/CSS/JavaScript
-- **Rich Ecosystem**: Millions of packages available via npm
-- **Rapid Development**: Hot reload, DevTools, mature tooling
-- **Responsive**: Easy to create adaptive UIs for different screen sizes
-
-### Expanding the Project
-
-#### Beginner Enhancements
-1. **Add Dark Mode**:
-   ```css
-   /* Add to style.css */
-   @media (prefers-color-scheme: dark) {
-       :root {
-           --bg-color: #1a1a1a;
-           --text-color: #ffffff;
-       }
-   }
-   ```
-
-2. **Add More Chart Types**:
-   ```javascript
-   // In main.js, add pie chart for payment breakdown
-   new Chart(ctx, {
-       type: 'pie',
-       data: {
-           labels: ['Principal', 'Interest'],
-           datasets: [{
-               data: [principal, totalInterest]
-           }]
-       }
-   });
-   ```
-
-3. **Add Input Validation**:
-   ```javascript
-   function validateInputs(principal, rate, years) {
-       if (principal <= 0) throw new Error('Principal must be positive');
-       if (rate < 0 || rate > 50) throw new Error('Rate must be 0-50%');
-       if (years <= 0 || years > 50) throw new Error('Years must be 1-50');
-   }
-   ```
-
-4. **Add Keyboard Shortcuts**:
-   ```javascript
-   document.addEventListener('keydown', (e) => {
-       if (e.ctrlKey && e.key === 'Enter') {
-           calculateAmortization();
-       }
-   });
-   ```
-
-#### Intermediate Enhancements
-1. **Extra Payment Calculator**:
-   ```rust
-   #[tauri::command]
-   fn calculate_with_extra_payments(
-       principal: f64,
-       rate: f64,
-       years: f64,
-       extra_payment: f64
-   ) -> AmortizationResult {
-       // Implement logic for additional principal payments
-   }
-   ```
-
-2. **Multiple Loan Comparison**:
-   ```javascript
-   // Store multiple loan scenarios
-   const loanScenarios = [
-       { name: 'Scenario 1', principal: 250000, rate: 6.5, years: 30 },
-       { name: 'Scenario 2', principal: 250000, rate: 5.5, years: 15 }
-   ];
-   ```
-
-3. **Data Persistence**:
-   ```rust
-   use tauri::api::path;
-   
-   #[tauri::command]
-   fn save_calculation(data: String) -> Result<(), String> {
-       let app_dir = path::app_config_dir(&tauri::Config::default())
-           .ok_or("Failed to get app directory")?;
-       // Save to file...
-   }
-   ```
-
-4. **Print Functionality**:
-   ```javascript
-   function printAmortizationSchedule() {
-       window.print();
-   }
-   ```
-
-#### Advanced Enhancements
-1. **Database Integration**:
-   ```rust
-   // Add to Cargo.toml
-   sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite"] }
-   
-   #[tauri::command]
-   async fn save_to_database(calculation: Calculation) -> Result<(), String> {
-       // SQLite database operations
-   }
-   ```
-
-2. **Web API Integration**:
-   ```rust
-   #[tauri::command]
-   async fn get_current_rates() -> Result<InterestRates, String> {
-       let response = reqwest::get("https://api.rates.com/current")
-           .await
-           .map_err(|e| e.to_string())?;
-       // Parse and return rates
-   }
-   ```
-
-3. **Advanced Charts**:
-   ```javascript
-   // 3D visualization with different charting library
-   import * as d3 from 'd3';
-   
-   function create3DChart(data) {
-       // D3.js implementation for complex visualizations
-   }
-   ```
-
-4. **Plugin System**:
-   ```rust
-   // Create trait for calculation plugins
-   trait CalculationPlugin {
-       fn calculate(&self, input: &LoanInput) -> CalculationResult;
-       fn name(&self) -> &str;
-   }
-   ```
-
-### Learning Paths
-
-#### Frontend Development Path
-1. **Master Modern JavaScript**:
-   - ES6+ features (arrow functions, destructuring, modules)
-   - Async/await and Promises
-   - DOM manipulation and event handling
-   - Module bundlers (Vite, Webpack)
-
-2. **CSS Excellence**:
-   - CSS Grid and Flexbox for layouts
-   - CSS animations and transitions
-   - Responsive design principles
-   - CSS preprocessing (Sass, Less)
-
-3. **Advanced Frameworks** (optional):
-   - React, Vue, or Svelte for complex UIs
-   - State management (Redux, Vuex, Zustand)
-   - Component-based architecture
-
-#### Backend Development Path
-1. **Rust Fundamentals**:
-   - Ownership and borrowing concepts
-   - Pattern matching and error handling
-   - Structs, enums, and traits
-   - Cargo and the ecosystem
-
-2. **Systems Programming**:
-   - Memory management
-   - Concurrency and parallelism
-   - File I/O and networking
-   - Performance optimization
-
-3. **Advanced Rust**:
-   - Macros and procedural macros
-   - Unsafe Rust (when necessary)
-   - Foreign Function Interface (FFI)
-   - Embedded and WebAssembly
-
-#### Desktop Development Path
-1. **Tauri Mastery**:
-   - Advanced configuration options
-   - Custom protocols and handlers
-   - Plugin development
-   - Distribution and deployment
-
-2. **Cross-platform Considerations**:
-   - Platform-specific features
-   - Native integrations
-   - File system differences
-   - User experience guidelines
-
-3. **Alternative Frameworks**:
-   - Compare with Electron, Qt, GTK
-   - Native development (Win32, Cocoa, GTK)
-   - Mobile development (Tauri Mobile)
-
-### Recommended Reading
-
-#### Books
-- **"The Rust Programming Language"** - Official Rust book
-- **"JavaScript: The Definitive Guide"** - David Flanagan
-- **"CSS: The Definitive Guide"** - Eric Meyer
-- **"Clean Code"** - Robert Martin
-
-#### Online Resources
-- **Tauri Documentation**: [tauri.app](https://tauri.app/)
-- **Rust Book**: [doc.rust-lang.org/book/](https://doc.rust-lang.org/book/)
-- **MDN Web Docs**: [developer.mozilla.org](https://developer.mozilla.org)
-- **Chart.js Docs**: [chartjs.org](https://www.chartjs.org/)
-
-#### Video Courses
-- **Rust for Beginners** - Microsoft Learn
-- **Modern JavaScript** - FreeCodeCamp
-- **CSS Grid & Flexbox** - Wes Bos
-- **Tauri Tutorials** - YouTube channels
-
-### Contributing to Open Source
-
-#### Getting Started with Contributions
-1. **Find beginner issues** on GitHub with "good first issue" labels
-2. **Start small**: Documentation fixes, typos, simple bug fixes
-3. **Learn the workflow**: Fork, branch, commit, pull request
-4. **Engage with community**: Join Discord servers, forums
-
-#### Potential Projects to Contribute To
-- **Tauri**: The framework itself
-- **Chart.js**: Visualization library
-- **Vite**: Build tool
-- **Rust crates**: Any dependency we use
-
-### Building a Portfolio
-
-#### Showcase This Project
-1. **Create a portfolio website** with screenshots and explanations
-2. **Write blog posts** about your learning process
-3. **Record demo videos** showing the app in action
-4. **Document challenges** and how you solved them
-
-#### Next Project Ideas
-1. **Personal Finance Tracker**: Expand on this concept
-2. **Inventory Management**: Business application
-3. **Game with Tauri**: Something fun and interactive
-4. **Developer Tools**: CLI utilities, code generators
-5. **Data Visualization**: Scientific or business analytics
-
-### Career Opportunities
-
-#### Skills This Project Demonstrates
-- **Full-stack development**: Frontend + backend integration
-- **Systems programming**: Rust and native compilation
-- **Modern tooling**: NPM, Cargo, Vite workflow
-- **Math/Finance**: Understanding of amortization calculations
-- **User experience**: Clean UI and responsive design
-- **Problem solving**: Debugging and troubleshooting
-
-#### Relevant Job Roles
-- **Frontend Developer**: Web technologies focus
-- **Backend Developer**: Rust and systems programming
-- **Full-stack Developer**: Both frontend and backend
-- **Desktop Application Developer**: Native app development
-- **Fintech Developer**: Financial software specialty
-- **Developer Tools Engineer**: Building tools for other developers
-
-The skills you've learned building this Tauri application are directly applicable to modern software development roles across many industries!
+The workflow configuration showcases advanced GitHub Actions techniques including matrix builds, conditional steps, and artifact handling for desktop application deployment.
 
 ---
 
