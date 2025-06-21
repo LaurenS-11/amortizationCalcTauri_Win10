@@ -316,184 +316,29 @@ npm run tauri:build
    - **macOS**: Apple Developer Program signing
    - **Linux**: GPG signing
 
-## 🔄 CI/CD & Multi-Platform Builds
+#### 📁 Local Build Output Locations
 
-This project features a robust **GitHub Actions** workflow that automatically builds the application for **Windows**, **Linux**, and **macOS** whenever a new version tag is pushed.
-
-### 🏗️ Automated Build Pipeline
-
-The CI/CD system creates native installers for all major platforms:
-
-| Platform | Artifacts Generated | Runner |
-|----------|-------------------|--------|
-| **Windows** | `.msi` installer, `.exe` executable | `windows-latest` |
-| **Linux** | `.deb` package, `.AppImage` | `ubuntu-22.04` |
-| **macOS** | `.dmg` disk image, `.app` bundle | `macos-latest` |
-
-### 🚀 How It Works
-
-1. **Trigger**: Push a version tag (e.g., `v1.0.0`) to trigger builds
-2. **Parallel Execution**: All three platforms build simultaneously 
-3. **Dependency Management**: Automatic installation of platform-specific requirements
-4. **Artifact Upload**: Built packages are automatically uploaded and available for download
-5. **Caching**: Rust dependencies are cached to speed up subsequent builds
-
-### 🔧 Linux Build Configuration
-
-The Linux build required special attention to dependency management:
-
-```yaml
-runs-on: ubuntu-22.04  # Specific version for package compatibility
-```
-
-**Required System Dependencies:**
-- `libwebkit2gtk-4.0-dev` - WebKit engine for the UI
-- `libjavascriptcoregtk-4.0-dev` - JavaScript execution engine
-- `libgtk-3-dev` - GTK development libraries
-- `libayatana-appindicator3-dev` - System tray support
-- `librsvg2-dev` - SVG rendering
-- `libdbus-1-dev` - System communication
-- `libudev-dev` - Device management
-- `libsoup2.4-dev` - HTTP client library
-- `pkg-config` - Build configuration
-- Standard build tools (`build-essential`, `curl`, `wget`, `libssl-dev`)
-
-### 🎯 Usage
-
-To trigger a new build:
-
-```bash
-# Create and push a version tag
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-### 📦 Download Builds
-
-After successful completion, artifacts are available in the GitHub Actions tab:
-- Go to your repository → Actions → Select the workflow run
-- Scroll down to "Artifacts" section
-- Download platform-specific builds
-
-### 🛠️ Development Notes
-
-This CI/CD setup demonstrates:
-- **Cross-platform compatibility** - Single codebase, multiple native outputs
-- **Dependency resolution** - Handling different package managers and system requirements
-- **Build optimization** - Caching strategies for faster builds
-- **Artifact management** - Organized distribution of build outputs
-
-The workflow configuration showcases advanced GitHub Actions techniques including matrix builds, conditional steps, and artifact handling for desktop application deployment.
-
-### Development (Educational Deep Dive)
-
-#### Understanding the Development Workflow
-
-**Tauri's Unique Architecture**:
-Unlike traditional desktop apps, Tauri uses a **web frontend + native backend** approach:
+When you build locally using `npm run tauri build`, the executables are created in:
 
 ```
-┌─────────────────────┐    ┌───────────────────────┐
-│    Web Frontend     │    │    Rust Backend       │
-│  (HTML/CSS/JS)      │◄──►│   (Native Code)       │
-│                     │    │                       │
-│ • User Interface    │    │ • File System Access │
-│ • User Interactions │    │ • Calculations        │
-│ • Charts & Graphics │    │ • Security Layer      │
-│ • Form Validation   │    │ • System APIs         │
-└─────────────────────┘    └───────────────────────┘
-       WebView                    Native Process
+src-tauri/target/release/bundle/
+├── deb/
+│   └── amortization-calculator_*.deb     # Debian package (Linux)
+├── appimage/
+│   └── amortization-calculator_*.AppImage # Portable Linux app
+├── msi/
+│   └── amortization-calculator_*.msi     # Windows installer
+├── nsis/
+│   └── amortization-calculator.exe      # Windows executable
+├── dmg/
+│   └── amortization-calculator_*.dmg    # macOS disk image
+└── macos/
+    └── amortization-calculator.app      # macOS application bundle
 ```
 
-**Communication Bridge**:
-- **Frontend → Backend**: JavaScript calls Rust functions via `invoke()`
-- **Backend → Frontend**: Rust returns data as JSON
-- **Security**: Only explicitly allowed functions can be called
+**File Sizes**: All builds are approximately **15MB** (much smaller than Electron alternatives!)
 
-#### Development Commands Explained
-
-**Start development server:**
-```bash
-npm run tauri:dev
-```
-
-**What this command does step-by-step**:
-
-1. **Checks `package.json` scripts**:
-   ```json
-   "scripts": {
-     "tauri:dev": "tauri dev"
-   }
-   ```
-
-2. **Tauri reads `src-tauri/tauri.conf.json`**:
-   ```json
-   "build": {
-     "beforeDevCommand": "npm run dev",
-     "devPath": "http://localhost:1420"
-   }
-   ```
-
-3. **Starts Vite dev server** (`npm run dev`):
-   - Compiles JavaScript/CSS in real-time
-   - Serves files on `http://localhost:1420`
-   - Watches for file changes
-   - Enables hot module replacement (HMR)
-
-4. **Compiles Rust backend** (if changed):
-   - Reads `src-tauri/Cargo.toml` for dependencies
-   - Compiles `src-tauri/src/main.rs`
-   - Links all dependencies
-   - Creates executable
-
-5. **Launches desktop window**:
-   - Creates native window using system webview
-   - Loads `http://localhost:1420` in the webview
-   - Establishes IPC (Inter-Process Communication) bridge
-   - Applies security policies from config
-
-**Development Features Active**:
-- ✅ **Hot Reload**: Frontend changes instantly visible
-- ✅ **DevTools**: Right-click → Inspect Element (same as browser)
-- ✅ **Console Logging**: `console.log()` works for debugging
-- ✅ **Network Tab**: Monitor API calls to Rust backend
-- ✅ **Error Overlay**: Build errors shown in the app window
-
-**Build for production:**
-```bash
-npm run tauri:build
-```
-
-**Production build process**:
-
-1. **Frontend optimization** (`npm run build`):
-   ```bash
-   vite build
-   ```
-   - **Tree shaking**: Removes unused code
-   - **Minification**: Reduces file sizes
-   - **Code splitting**: Separates vendor and app code
-   - **Asset optimization**: Compresses images, etc.
-   - **Creates `dist/` folder** with optimized files
-
-2. **Backend compilation**:
-   ```bash
-   cargo build --release
-   ```
-   - **Release mode**: Maximum optimizations enabled
-   - **No debug symbols**: Smaller binary size
-   - **Aggressive inlining**: Function calls optimized away
-   - **Dead code elimination**: Unused code removed
-
-3. **App bundling**:
-   - **Windows**: Creates `.exe` and `.msi` installer
-   - **macOS**: Creates `.app` bundle and `.dmg` disk image
-   - **Linux**: Creates `.deb` package and `AppImage`
-
-4. **Code signing** (if configured):
-   - **Windows**: Authenticode signing
-   - **macOS**: Apple Developer Program signing
-   - **Linux**: GPG signing
+**Distribution**: These files can be shared and installed on other computers without requiring development tools.
 
 ## 📖 Usage Guide
 
@@ -778,6 +623,65 @@ After successful completion, artifacts are available in the GitHub Actions tab:
 - Go to your repository → Actions → Select the workflow run
 - Scroll down to "Artifacts" section
 - Download platform-specific builds
+
+### 📥 Downloading Pre-Built Executables
+
+If you don't want to build from source, you can download ready-to-use executables from our automated builds:
+
+#### **GitHub Actions Artifacts**
+
+1. **Navigate to the repository**: https://github.com/LaurenS-11/amortizationCalcTauri_Win10
+2. **Click the "Actions" tab** at the top of the repository
+3. **Find the latest successful workflow run** (look for green checkmarks)
+4. **Scroll down to the "Artifacts" section** at the bottom of the run page
+
+#### **Available Downloads**
+
+| Artifact Package | Platform | Contains | File Size |
+|------------------|----------|----------|-----------|
+| **`linux-builds`** | Linux | `.deb` package + `.AppImage` | ~15MB |
+| **`windows-builds`** | Windows | `.msi` installer + `.exe` | ~15MB |
+| **`macos-builds`** | macOS | `.dmg` disk image + `.app` bundle | ~15MB |
+
+#### **Installation Instructions**
+
+**Linux Users:**
+```bash
+# Option 1: Install .deb package (Ubuntu/Debian)
+sudo dpkg -i amortization-calculator_*.deb
+
+# Option 2: Run AppImage (any Linux distribution)
+chmod +x amortization-calculator_*.AppImage
+./amortization-calculator_*.AppImage
+```
+
+**Windows Users:**
+```cmd
+# Option 1: Run the MSI installer (recommended)
+# Double-click the .msi file and follow the installer
+
+# Option 2: Run the standalone executable
+# Just double-click the .exe file
+```
+
+**macOS Users:**
+```bash
+# Option 1: Mount and install from DMG
+# Double-click the .dmg file and drag the app to Applications
+
+# Option 2: Run the .app bundle directly
+# Double-click the .app file
+```
+
+#### **Artifact Retention**
+- **Availability**: Artifacts are available for **90 days** after the build
+- **Access**: No GitHub account required for download
+- **Updates**: New builds are created automatically when version tags are pushed
+
+#### **Troubleshooting Downloads**
+- **File not found**: The artifact may have expired (90+ days old)
+- **Permission denied**: On Linux/macOS, you may need to make files executable: `chmod +x filename`
+- **Security warnings**: Some systems may warn about unsigned executables - this is normal for open-source builds
 
 ### 🛠️ Development Notes
 
