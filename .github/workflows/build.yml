@@ -9,7 +9,8 @@ on:
 permissions:
   contents: write
 
-jobs:  build-linux:
+jobs:
+  build-linux:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
